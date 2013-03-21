@@ -15,8 +15,8 @@ send.write('0032want 0000000000000000000000000000000000000000\n')
 
 ## API
 
-this module presents a `through` stream; when written to it removes the appropriate
-length header and newline ending. if an empty string or buffer is written, it will
+this module presents a `through` stream; when written to it removes the
+length header; but it leaves the newline ending. if an empty string or buffer is written, it will
 emit a git "flush packet", which is just a size-0 packet. 
 
 after each line received, it checks to see if the next line starts with `PACK`; and if so will enter recv-pack mode. 
@@ -27,6 +27,7 @@ after each line received, it checks to see if the next line starts with `PACK`; 
 { channel: Number(0) // the sideband data the channel was sent on
 , type: 'packfile' | 'pkt-line' | 'pkt-flush'
 , size: Number
+, data: null | Buffer()
 , caps: ['list', 'of', 'capabilities'] }
 ```
 

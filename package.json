@@ -20,5 +20,8 @@
   "author": "Chris Dickinson <chris@neversaw.us>",
   "license": "MIT",
   "readmeFilename": "README.md",
-  "gitHead": "f6deea6b66c300e764a8c9742508a182994530c5"
+  "gitHead": "f6deea6b66c300e764a8c9742508a182994530c5",
+  "devDependencies": {
+    "tape": "~0.3.0"
+  }
 }

@@ -119,6 +119,12 @@ function readline() {
     if(!capabilities) {
       // we should see capabilities here.
       capabilities = divine_capabilities(buf)
+      if(capabilities) {
+        buf = buf.slice(0, capabilities.idx + 1)
+        buf.writeUInt8(0x0a, buf.length - 1)
+        capabilities = capabilities.caps
+        expect_size = buf.length
+      }
     }
 
     stream.queue({
@@ -170,9 +176,13 @@ function divine_capabilities(buf) {
       break
     }
   }
+
   if(i === len) {
     return null
   }
 
-  return buf.slice(i+1, buf.length - 1).toString().split(' ')
+  return {
+      idx: i
+    , caps: buf.slice(i+1, buf.length - 1).toString().split(' ')
+  }
 }
