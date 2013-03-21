@@ -34,5 +34,8 @@
   "gitHead": "f6deea6b66c300e764a8c9742508a182994530c5",
   "devDependencies": {
     "tape": "~0.3.0"
+  },
+  "dependencies": {
+    "through": "~2.2.7"
   }
 }
