@@ -24,12 +24,18 @@ after each line received, it checks to see if the next line starts with `PACK`; 
 ## data event
 
 ```javascript
-{ channel: Number(0) // the sideband data the channel was sent on
-, type: 'packfile' | 'pkt-line' | 'pkt-flush'
+{ type: 'packfile' | 'pkt-line' | 'pkt-flush'
 , size: Number
 , data: null | Buffer()
 , caps: ['list', 'of', 'capabilities'] }
 ```
+
+> ## Warning
+>
+> This module simply passes pack data through.
+> If the source is set to emit `side-band` or `side-band-64k`
+> type data, you'll have to use another module to separate
+> that multiplexed data out.
 
 ## License
 

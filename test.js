@@ -16,12 +16,12 @@ test('works as expected', function(assert) {
     , 'PACK0123456678999'
   ]
   expect = [
-      {channel:0, size:3, data:'hi\n', type:'pkt-line', caps:null}
-    , {channel:0, size:0x2e, data:'want 0000000000000000000000000000000000000000\n', type:'pkt-line', caps:null}
-    , {channel:0, size:0, data:null, type:'pkt-flush', caps:null}
-    , {channel:0, size:3, data:'hi\n', type:'pkt-line', caps:['ofs-delta', 'hat', 'party']}
-    , {channel:0, size:4, data:'PACK', type:'packfile', caps:['ofs-delta', 'hat', 'party']}
-    , {channel:0, size:13, data:'0123456678999', type:'packfile', caps:['ofs-delta', 'hat', 'party']}
+      {size:3, data:'hi\n', type:'pkt-line', caps:null}
+    , {size:0x2e, data:'want 0000000000000000000000000000000000000000\n', type:'pkt-line', caps:null}
+    , {size:0, data:null, type:'pkt-flush', caps:null}
+    , {size:3, data:'hi\n', type:'pkt-line', caps:['ofs-delta', 'hat', 'party']}
+    , {size:4, data:'PACK', type:'packfile', caps:['ofs-delta', 'hat', 'party']}
+    , {size:13, data:'0123456678999', type:'packfile', caps:['ofs-delta', 'hat', 'party']}
   ]
 
 

@@ -14,22 +14,11 @@ var _ = 0
 function readline() {
   var stream = through(write)
     , state = STATE_READY
-    , sideband = false
-    , ready_state = STATE_READY
     , expect = [1, 4, null, 4, Infinity]
     , capabilities = null
-    , expect_channel = 0
     , expect_size = 0
     , accum = []
     , got = 0
-
-  stream.sideband = function(tf) {
-    if(arguments.length) {
-      sideband = tf
-      ready_state = tf ? STATE_READY_CHANNEL : STATE_READY
-    }
-    return sideband
-  }
 
   return stream
 
@@ -46,10 +35,6 @@ function readline() {
 
     if(accum.length && state === STATE_MAYBE_PACK) {
       do_maybe_packs()
-    }
-
-    if(accum.length && state === STATE_READY_CHANNEL) {
-      do_channel()
     }
 
     if(accum.length && state === STATE_READY) {
@@ -81,14 +66,6 @@ function readline() {
       state = STATE_PACK
       return
     }
-    state = ready_state
-  }
-
-  function do_channel() {
-    var buf
-    _fill(buf = new Buffer(expect[state]))
-
-    expect_channel = buf.readUInt8(0)
     state = STATE_READY
   }
 
@@ -98,13 +75,12 @@ function readline() {
     expect_size = parseInt(buf.toString(), 16)
     if(expect_size === 0) {
       stream.queue({
-          channel: expect_channel
-        , type: 'pkt-flush'
+          type: 'pkt-flush'
         , data: null
         , size: 0
         , caps: capabilities
       })
-      state = ready_state
+      state = STATE_READY
       return
     }
     expect_size -= 4
@@ -128,8 +104,7 @@ function readline() {
     }
 
     stream.queue({
-        channel: expect_channel
-      , type: 'pkt-line'
+        type: 'pkt-line'
       , data: buf
       , size: expect_size
       , caps: capabilities 
@@ -148,8 +123,7 @@ function readline() {
 
   function queue_packdata(buf) {
     stream.queue({
-        channel: expect_channel
-      , type: 'packfile'
+        type: 'packfile'
       , data: buf
       , size: buf.length
       , caps: capabilities 
