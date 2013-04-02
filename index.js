@@ -37,15 +37,15 @@ function readline() {
       do_maybe_packs()
     }
 
-    if(accum.length && state === STATE_READY) {
+    if(accum.length && got >= expect[state] && state === STATE_READY) {
       do_size()
     }
 
-    if(accum.length && state === STATE_RECV) {
+    if(accum.length && got >= expect[state] && state === STATE_RECV) {
       do_recv()
     }
 
-    if(accum.length && state === STATE_PACK) {
+    if(accum.length && got >= expect[state] && state === STATE_PACK) {
       do_packs()
     }
 
@@ -132,14 +132,15 @@ function readline() {
 
   function _fill(current) {
     var num = current.length
-      , buf = Buffer.concat(accum)
+      , buf = Buffer.concat(accum, got)
       , rest
 
-    accum.length = 0
+    got = accum.length = 0
     buf.copy(current, 0, 0, num)
 
     if(num !== buf.length) {
       accum[0] = buf.slice(num)
+      got = accum[0].length
     }
   } 
 }
