@@ -20,8 +20,7 @@ test('works as expected', function(assert) {
     , {size:0x2e, data:'want 0000000000000000000000000000000000000000\n', type:'pkt-line', caps:null}
     , {size:0, data:null, type:'pkt-flush', caps:null}
     , {size:3, data:'hi\n', type:'pkt-line', caps:['ofs-delta', 'hat', 'party']}
-    , {size:4, data:'PACK', type:'packfile', caps:['ofs-delta', 'hat', 'party']}
-    , {size:13, data:'0123456678999', type:'packfile', caps:['ofs-delta', 'hat', 'party']}
+    , {size:17, data:'PACK0123456678999', type:'packfile', caps:['ofs-delta', 'hat', 'party']}
   ]
 
 
@@ -31,7 +30,11 @@ test('works as expected', function(assert) {
   })
 
   do {
-    stream.write(new Buffer(data[idx], 'utf8'))
+    if(data[idx]) {
+      stream.write(new Buffer(data[idx], 'utf8'))
+    } else {
+      stream.end()
+    }
   } while(idx !== expect.length)
   assert.end()
 })
