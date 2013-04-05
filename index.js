@@ -19,6 +19,7 @@ function readline() {
     , expect_size = 0
     , accum = []
     , got = 0
+    , recursed = 0
 
   return stream
 
@@ -51,7 +52,19 @@ function readline() {
 
     if(accum.length) {
       buf = Buffer.concat(accum)
+      got = 0
       accum.length = 0
+      ++recursed
+
+      if(recursed > 256) {
+        stream.pause()
+        process.nextTick(function() {
+          recursed = 0
+          write(buf)
+          stream.resume()
+        })
+        return
+      }
       write(buf)
     }
   }
@@ -136,8 +149,8 @@ function readline() {
       , rest
 
     got = accum.length = 0
-    buf.copy(current, 0, 0, num)
 
+    buf.copy(current, 0, 0, num)
     if(num !== buf.length) {
       accum[0] = buf.slice(num)
       got = accum[0].length
