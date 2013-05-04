@@ -1,8 +1,8 @@
 module.exports = readline
 
 var through = require('through')
-  , Buffer = require('buffer').Buffer
-  , SIZE = new Buffer(4)
+  , binary = require('bops')
+  , SIZE = binary.create(4)
 
 var _ = 0
   , STATE_READY_CHANNEL = _++
@@ -51,7 +51,7 @@ function readline() {
     }
 
     if(accum.length) {
-      buf = Buffer.concat(accum)
+      buf = binary.join(accum)
       got = 0
       accum.length = 0
       ++recursed
@@ -72,10 +72,10 @@ function readline() {
   function do_maybe_packs() {
     // we're just peeking at the first four bytes
     var buf
-    _fill(buf = new Buffer(expect[state]))
+    _fill(buf = binary.create(expect[state]))
     accum.unshift(buf)
     got += expect[state]
-    if(buf.toString() === 'PACK') {
+    if(binary.to(buf, 'utf8') === 'PACK') {
       state = STATE_PACK
       return
     }
@@ -84,8 +84,8 @@ function readline() {
 
   function do_size() {
     var buf
-    _fill(buf = new Buffer(expect[state]))
-    expect_size = parseInt(buf.toString(), 16)
+    _fill(buf = binary.create(expect[state]))
+    expect_size = parseInt(binary.to(buf, 'utf8'), 16)
     if(expect_size === 0) {
       stream.queue({
           type: 'pkt-flush'
@@ -103,14 +103,14 @@ function readline() {
 
   function do_recv() {
     var buf
-    _fill(buf = new Buffer(expect[state]))
+    _fill(buf = binary.create(expect[state]))
 
     if(!capabilities) {
       // we should see capabilities here.
       capabilities = divine_capabilities(buf)
       if(capabilities) {
-        buf = buf.slice(0, capabilities.idx + 1)
-        buf.writeUInt8(0x0a, buf.length - 1)
+        buf = binary.subarray(buf, 0, capabilities.idx + 1)
+        buf[buf.length - 1] = 0x0A
         capabilities = capabilities.caps
         expect_size = buf.length
       }
@@ -145,14 +145,14 @@ function readline() {
 
   function _fill(current) {
     var num = current.length
-      , buf = Buffer.concat(accum, got)
+      , buf = binary.join(accum)
       , rest
 
     got = accum.length = 0
 
-    buf.copy(current, 0, 0, num)
+    binary.copy(buf, current, 0, 0, num)
     if(num !== buf.length) {
-      accum[0] = buf.slice(num)
+      accum[0] = binary.subarray(buf, num)
       got = accum[0].length
     }
   } 
@@ -160,7 +160,7 @@ function readline() {
 
 function divine_capabilities(buf) {
   for(var i = 0, len = buf.length; i < len; ++i) {
-    if(buf.readUInt8(i) === 0) {
+    if(buf[i] === 0) {
       break
     }
   }
@@ -171,6 +171,6 @@ function divine_capabilities(buf) {
 
   return {
       idx: i
-    , caps: buf.slice(i+1, buf.length - 1).toString().split(' ')
+    , caps: binary.to(binary.subarray(buf, i+1, buf.length - 1), 'utf8').split(' ')
   }
 }

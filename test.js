@@ -1,6 +1,6 @@
 var test = require('tape')
   , send = require('./index')
-  , Buffer = require('buffer').Buffer
+  , binary = require('bops')
 
 test('works as expected', function(assert) {
   var stream = send()
@@ -25,13 +25,13 @@ test('works as expected', function(assert) {
 
 
   stream.on('data', function(d) {
-    d.data = d.data === null ? d.data : d.data+''
+    d.data = d.data === null ? d.data : binary.to(d.data, 'utf8')
     assert.deepEqual(d, expect[idx++]) 
   })
 
   do {
     if(data[idx]) {
-      stream.write(new Buffer(data[idx], 'utf8'))
+      stream.write(binary.from(data[idx], 'utf8'))
     } else {
       stream.end()
     }
