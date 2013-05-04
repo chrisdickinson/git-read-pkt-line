@@ -33,10 +33,10 @@
   "readmeFilename": "README.md",
   "gitHead": "f6deea6b66c300e764a8c9742508a182994530c5",
   "devDependencies": {
-    "tape": "~0.3.0"
+    "tape": "~1.0.1"
   },
   "dependencies": {
     "through": "~2.2.7",
-    "bops": "0.0.1"
+    "bops": "0.0.2"
   }
 }
