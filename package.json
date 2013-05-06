@@ -37,6 +37,6 @@
   },
   "dependencies": {
     "through": "~2.2.7",
-    "bops": "0.0.2"
+    "bops": "0.0.3"
   }
 }
