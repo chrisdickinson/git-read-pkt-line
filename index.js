@@ -1,5 +1,6 @@
 module.exports = readline
 
+
 var through = require('through')
   , binary = require('bops')
   , SIZE = binary.create(4)
@@ -11,157 +12,176 @@ var _ = 0
   , STATE_MAYBE_PACK = _++
   , STATE_PACK = _++
 
-function readline() {
+function readline(server_mode) {
   var stream = through(write)
-    , state = STATE_READY
-    , expect = [1, 4, null, 4, Infinity]
-    , capabilities = null
-    , expect_size = 0
+    , caps = null
+    , expect = 0
+    , size = 0
     , accum = []
     , got = 0
-    , recursed = 0
+    , seen = 0
+    , state = parse_size
+    , done = false
+    , type
+
+  server_mode = !!server_mode
+
+  var divine_capabilities = server_mode ?
+    divine_server_capabilities :
+    divine_client_capabilities
 
   return stream
 
   function write(buf) {
-    if(state === STATE_PACK) {
-      return queue_packdata(buf)
-    }
-
     accum[accum.length] = buf
     got += buf.length
-    if(got < expect[state]) {
+
+    done = false
+    while(!done) {
+      state()
+    }
+    done = false 
+  }
+
+  function parse_packfile() {
+    stream.queue({
+      type: 'packfile'
+    , data: take(got)
+    , caps: null
+    })
+    done = true
+  }
+
+  function parse_size() {
+    type = 'pkt-line'
+    if(got < 4) {
+      done = true
       return
     }
 
-    if(accum.length && state === STATE_MAYBE_PACK) {
-      do_maybe_packs()
-    }
+    var bits = take(4)
+      , human = binary.to(bits, 'utf8')
 
-    if(accum.length && got >= expect[state] && state === STATE_READY) {
-      do_size()
-    }
-
-    if(accum.length && got >= expect[state] && state === STATE_RECV) {
-      do_recv()
-    }
-
-    if(accum.length && got >= expect[state] && state === STATE_PACK) {
-      do_packs()
-    }
-
-    if(accum.length) {
-      buf = binary.join(accum)
-      got = 0
-      accum.length = 0
-      ++recursed
-
-      if(recursed > 256) {
-        stream.pause()
-        process.nextTick(function() {
-          recursed = 0
-          write(buf)
-          stream.resume()
-        })
-        return
-      }
-      write(buf)
-    }
-  }
-
-  function do_maybe_packs() {
-    // we're just peeking at the first four bytes
-    var buf
-    _fill(buf = binary.create(expect[state]))
-    accum.unshift(buf)
-    got += expect[state]
-    if(binary.to(buf, 'utf8') === 'PACK') {
-      state = STATE_PACK
+    if(human === 'PACK') {
+      accum.unshift(bits)
+      got += 4
+      state = parse_packfile
       return
     }
-    state = STATE_READY
-  }
-
-  function do_size() {
-    var buf
-    _fill(buf = binary.create(expect[state]))
-    expect_size = parseInt(binary.to(buf, 'utf8'), 16)
-    if(expect_size === 0) {
-      stream.queue({
-          type: 'pkt-flush'
-        , data: null
-        , size: 0
-        , caps: capabilities
+ 
+    size = parseInt(human, 16)
+    if(!size) {
+      return stream.queue({
+        type: 'pkt-flush'
+      , data: null
+      , caps: null
       })
-      state = STATE_READY
-      return
     }
-    expect_size -= 4
-    expect[STATE_RECV] = expect_size
-    state = STATE_RECV
+    size -= 4
+    state = parse_first_byte
   }
 
-  function do_recv() {
-    var buf
-    _fill(buf = binary.create(expect[state]))
+  function parse_first_byte() {
+    if(got < 1) {
+      done = true
+      return
+    }
 
-    if(!capabilities) {
-      // we should see capabilities here.
-      capabilities = divine_capabilities(buf)
-      if(capabilities) {
-        buf = binary.subarray(buf, 0, capabilities.idx + 1)
+    state = parse_packet_line
+
+    var peek = accum[0][0]
+    type = peek === 1 ? 'packfile' :
+          peek === 2 ? 'progress' : 
+          peek === 3 ? 'error' : 'pkt-line'
+  }
+
+  function parse_packet_line() {
+    if(got < size) {
+      done = true
+      return
+    }
+
+    var buf = take(size)
+      , check_caps_on = server_mode ? 2 : 1
+
+    ++seen
+    if(!caps && seen === check_caps_on) {
+      caps = divine_capabilities(buf) 
+      if(caps) {
+        buf = binary.subarray(buf, 0, caps.idx + 1)
         buf[buf.length - 1] = 0x0A
-        capabilities = capabilities.caps
-        expect_size = buf.length
+        caps = caps.caps
       }
     }
 
-    stream.queue({
-        type: 'pkt-line'
-      , data: buf
-      , size: expect_size
-      , caps: capabilities 
-    })
-
-    expect[STATE_RECV] = expect_size = null
-    state = STATE_MAYBE_PACK
-  }
-
-  function do_packs() {
-    // empty the accum into the stream
-    while(accum.length) {
-      queue_packdata(accum.shift())
-    } 
-  }
-
-  function queue_packdata(buf) {
-    stream.queue({
-        type: 'packfile'
-      , data: buf
-      , size: buf.length
-      , caps: capabilities 
-    })
-  }
-
-  function _fill(current) {
-    var num = current.length
-      , buf = binary.join(accum)
-      , rest
-
-    got = accum.length = 0
-
-    binary.copy(buf, current, 0, 0, num)
-    if(num !== buf.length) {
-      accum[0] = binary.subarray(buf, num)
-      got = accum[0].length
+    if(type !== 'pkt-line') {
+      buf = binary.subarray(buf, 1)
     }
-  } 
+    stream.queue({
+        data: buf
+      , type: type
+      , caps: caps
+    })
+    state = parse_size
+    caps = null 
+  }
+
+  function take(num) {
+    var portion = []
+      , have = 0
+
+    if(num < 0) {
+      throw new Error
+    }
+
+    while(have < num) {
+      var sum = have + accum[0].length
+      if(sum > num) {
+        portion[portion.length] = binary.subarray(accum[0], 0, num - have)
+        accum[0] = binary.subarray(accum[0], num - have)
+        break
+      }
+      portion[portion.length] = accum.shift()
+      have += portion[portion.length - 1].length
+    }
+
+    got -= num
+
+    return binary.join(portion)
+  }
 }
 
-function divine_capabilities(buf) {
+function divine_client_capabilities(buf) {
   for(var i = 0, len = buf.length; i < len; ++i) {
     if(buf[i] === 0) {
       break
+    }
+  }
+
+  if(i === len) {
+    return null
+  }
+
+  return {
+      idx: i
+    , caps: binary.to(binary.subarray(buf, i+1, buf.length - 2), 'utf8').split(' ')
+  }
+}
+
+function divine_server_capabilities(buf) {
+  var is_fetch = binary.to(binary.subarray(buf, 0, 4)) === 'want'
+
+  if(is_fetch) {
+    for(var i = 45, len = buf.length; i < len; ++i) {
+      if(buf[i] === 32) {
+        break
+      }
+    }
+  } else {
+    for(var i = 0, len = buf.length; i < len; ++i) {
+      if(buf[i] === 0) {
+        break
+      }
     }
   }
 

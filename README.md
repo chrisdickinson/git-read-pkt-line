@@ -24,8 +24,7 @@ after each line received, it checks to see if the next line starts with `PACK`; 
 ## data event
 
 ```javascript
-{ type: 'packfile' | 'pkt-line' | 'pkt-flush'
-, size: Number
+{ type: 'packfile' | 'pkt-line' | 'pkt-flush' | 'progress' | 'error'
 , data: null | Buffer()
 , caps: ['list', 'of', 'capabilities'] }
 ```
